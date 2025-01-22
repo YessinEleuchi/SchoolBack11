@@ -16,5 +16,9 @@ class Subject extends Model
     {
         return $this->belongsTo(Level::class);
     }
+    public function courseFiles()
+    {
+        return $this->hasMany(CourseFile::class);
+    }
 
 }

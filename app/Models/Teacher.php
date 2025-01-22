@@ -33,4 +33,15 @@ class Teacher extends Model
     {
         return $this->belongsToMany(Subject::class, 'subject_teacher');
     }
+
+
+    /**
+     * Relation entre l'enseignant et les fichiers de cours.
+     */
+    public function courseFiles()
+    {
+        return $this->hasMany(CourseFile::class);
+    }
+
+
 }

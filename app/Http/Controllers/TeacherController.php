@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
 use App\Enums\TeacherStatutEnum;
+use App\Models\CourseFile;
 use App\Models\User;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
@@ -82,4 +83,44 @@ class TeacherController extends Controller
             'subjects' => $teacher->subjects,
         ]);
     }
+    public function addCourseFile(Request $request, $subjectId)
+    {
+        // Vérifier que l'utilisateur est un enseignant
+        $teacher = Auth::user()->teacher;
+
+        if (!$teacher) {
+            return response()->json(['message' => 'Unauthorized: Only teachers can add course files.'], 403);
+        }
+
+        // Vérifier que le sujet appartient à cet enseignant
+        $subject = $teacher->subjects()->where('subject_id', $subjectId)->first();
+
+        if (!$subject) {
+            return response()->json(['message' => 'This subject does not belong to you.'], 403);
+        }
+
+        // Valider la requête
+        $request->validate([
+            'file' => 'required|file|max:2048', // Limite de taille 2MB
+        ]);
+
+        // Enregistrer le fichier
+        $file = $request->file('file');
+        $filePath = $file->store('course_files', 'public'); // Stocker dans le dossier public/course_files
+        $fileName = $file->getClientOriginalName();
+
+        // Créer l'entrée dans la table course_files
+        $courseFile = CourseFile::create([
+            'subject_id' => $subjectId,
+            'teacher_id' => $teacher->id,
+            'file_name' => $fileName,
+            'file_path' => $filePath,
+        ]);
+
+        return response()->json([
+            'message' => 'Course file uploaded successfully',
+            'course_file' => $courseFile,
+        ], 201);
+    }
+
 }
