@@ -1,69 +1,157 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
 use App\Enums\TeacherStatutEnum;
-use App\Models\CourseFile;
-use App\Models\User;
 use App\Models\Teacher;
+use App\Models\User;
+use App\Models\CourseFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
 class TeacherController extends Controller
 {
-    /**
-     * Ajouter un enseignant.
-     */
     public function addTeacher(Request $request)
     {
-        // Vérifier que l'utilisateur est un administrateur
-        if (Auth::user()->role !== RoleEnum::Admin->value) {
+        try {
+            if (Auth::user()->role !== RoleEnum::Admin->value) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Only admins can add teachers.',
+                ], 403);
+            }
+    
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:6',
+                'gender' => 'required|string',
+                'phone' => 'required|string',
+                'address' => 'required|string',
+                'dateofbirth' => 'required|date',
+                'admission_no' => 'required|string|unique:teachers',
+                'status' => 'required|string|in:' . implode(',', TeacherStatutEnum::values()),
+            ]);
+    
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'dateofbirth' => $validated['dateofbirth'],
+                'gender' => $validated['gender'],
+                'phone' => $validated['phone'],
+                'address' => $validated['address'],
+                'password' => Hash::make($validated['password']),
+                'role' => RoleEnum::Teacher->value,
+            ]);
+    
+            $teacher = Teacher::create([
+                'user_id' => $user->id,
+                'admission_no' => $validated['admission_no'],
+                'status' => $validated['status'],
+            ]);
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Teacher created successfully',
+                'teacher' => $teacher,
+                'user' => $user,
+            ], 201);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Only admins can add teachers.',
-            ], 403); // 403 Forbidden
+                'message' => 'Une erreur est survenue.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Validation de la requête
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'gender' => 'required|string',
-            'phone' => 'required|string',
-            'address' => 'required|string',
-            'dateofbirth' => 'required|date',
-            'admission_no' => 'required|string|unique:teachers', // Admission no unique
-            'status' => 'required|string|in:' . implode(',', TeacherStatutEnum::values()), // Enum des statuts
-        ]);
-
-        // Étape 1 : Créer l'utilisateur
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => RoleEnum::Teacher->value, // Rôle enseignant
-        ]);
-
-        // Étape 2 : Créer l'enseignant
-        $teacher = Teacher::create([
-            'user_id' => $user->id,
-            'admission_no' => $request->admission_no,
-            'status' => $request->status,
-        ]);
-
-        // Réponse de succès
-        return response()->json([
-            'message' => 'Teacher created successfully',
-            'teacher' => $teacher,
-        ], 201);
     }
 
-    /**
-     * Assigner une matière à un enseignant.
-     */
+    public function getAllTeachers()
+    {
+        $teachers = Teacher::with('user')->get();
+        return response()->json(['data' => $teachers], 200);
+    }
+
+    public function getTeacherById($id)
+    {
+        $teacher = Teacher::with('user')->findOrFail($id);
+        return response()->json(['data' => $teacher], 200);
+    }
+
+    public function updateTeacher(Request $request, $id)
+    {
+        $teacher = Teacher::findOrFail($id);
+        $user = $teacher->user;
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'sometimes|nullable|string|min:6',
+            'gender' => 'sometimes|string',
+            'phone' => 'sometimes|string',
+            'address' => 'sometimes|string',
+            'dateofbirth' => 'sometimes|date',
+            'admission_no' => 'sometimes|string|unique:teachers,admission_no,' . $teacher->id,
+            'status' => 'sometimes|string|in:' . implode(',', TeacherStatutEnum::values()),
+        ]);
+
+        try {
+            $userData = [];
+            if ($request->has('name')) $userData['name'] = $request->name;
+            if ($request->has('email')) $userData['email'] = $request->email;
+            if ($request->has('password')) $userData['password'] = Hash::make($request->password);
+            if ($request->has('gender')) $userData['gender'] = $request->gender;
+            if ($request->has('phone')) $userData['phone'] = $request->phone;
+            if ($request->has('address')) $userData['address'] = $request->address;
+            if ($request->has('dateofbirth')) $userData['date_of_birth'] = $request->dateofbirth;
+
+            if (!empty($userData)) {
+                $user->update($userData);
+            }
+
+            $teacherData = [];
+            if ($request->has('admission_no')) $teacherData['admission_no'] = $request->admission_no;
+            if ($request->has('status')) $teacherData['status'] = $request->status;
+
+            if (!empty($teacherData)) {
+                $teacher->update($teacherData);
+            }
+
+            return response()->json([
+                'message' => 'Teacher updated successfully',
+                'teacher' => $teacher,
+                'user' => $user,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the teacher.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteTeacher($id)
+    {
+        $teacher = Teacher::findOrFail($id);
+        $user = $teacher->user;
+
+        try {
+            $teacher->delete();
+            $user->delete();
+            return response()->json([
+                'message' => 'Teacher deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while deleting the teacher.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     public function assignSubject(Request $request, $teacherId)
     {
         // Validation de la requête
@@ -122,5 +210,4 @@ class TeacherController extends Controller
             'course_file' => $courseFile,
         ], 201);
     }
-
 }

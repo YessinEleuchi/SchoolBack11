@@ -14,28 +14,48 @@ use App\Http\Controllers\TeacherController;
 
 // Route publique : Login
 Route::post('login', [AdminController::class, 'login'])->name('admin.login');
-
 // Routes protégées nécessitant une authentification
 Route::middleware('auth:api')->group(function () {
     // Routes accessibles uniquement par l'admin
     Route::middleware('admin')->group(function () {
         // AdminController Routes
-        Route::post('register-admin', [AdminController::class, 'registerAdmin'])->name('admin.register');
-        // TeacherController Routes
-        Route::post('add-teacher', [TeacherController::class, 'addTeacher'])->name('teacher.add');
-        Route::post('/teachers/{teacherId}/assign-subjects', [TeacherController::class, 'assignSubject']);
-        // ParentsController Routes
-        Route::post('add-parent', [ParentsController::class, 'addParents'])->name('parent.add');
+       // Admin Routes
+       Route::post('register-admin', [AdminController::class, 'registerAdmin'])->name('admin.register');
+       Route::get('admins', [AdminController::class, 'getAllAdmins'])->name('admin.all');
+       Route::get('admins/{id}', [AdminController::class, 'getAdminById'])->name('admin.get');
+       Route::put('admins/{id}', [AdminController::class, 'updateAdmin'])->name('admin.update');
+       Route::delete('admins/{id}', [AdminController::class, 'deleteAdmin'])->name('admin.delete');
+       
+       // Teacher Routes
+       Route::post('add-teacher', [TeacherController::class, 'addTeacher'])->name('teacher.add');
+       Route::get('teachers', [TeacherController::class, 'getAllTeachers'])->name('teacher.all');
+       Route::get('teachers/{id}', [TeacherController::class, 'getTeacherById'])->name('teacher.get');
+       Route::put('teachers/{id}', [TeacherController::class, 'updateTeacher'])->name('teacher.update');
+       Route::delete('teachers/{id}', [TeacherController::class, 'deleteTeacher'])->name('teacher.delete');
+       
+       Route::post('/teachers/{teacherId}/assign-subjects', [TeacherController::class, 'assignSubject']);
+
+       // Parent Routes
+       Route::post('add-parents', [ParentsController::class, 'addParents'])->name('parent.add');
+        Route::get('parents', [ParentsController::class, 'getAllParents'])->name('parent.all');
+        Route::get('parents/{id}', [ParentsController::class, 'getParentById'])->name('parent.get');
+        Route::put('parents/{id}', [ParentsController::class, 'updateParent'])->name('parent.update');
+        Route::delete('parents/{id}', [ParentsController::class, 'deleteParent'])->name('parent.delete');
+   
         // StudentController Routes
         Route::post('add-student', [StudentController::class, 'addStudent'])->name('student.add');
-        // Ressources réservées à l'admin
+        Route::get('students', [StudentController::class, 'getAll'])->name('student.all');
+        Route::get('student/{id}', [StudentController::class, 'getById'])->name('student.get');
+        Route::delete('student/{id}', [StudentController::class, 'delete'])->name('student.delete');
+        Route::put('student/{id}', [StudentController::class, 'update'])->name('student.update');       
+         // Ressources réservées à l'admin
         Route::resource('fields', FieldController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('cycles', CycleController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('groups', GroupController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('levels', LevelController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('subjects', SubjectController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('specializations', SpecializationController::class)->except(['index', 'show', 'create', 'edit']);
-    });
+   });
 
     // Routes accessibles par tous les utilisateurs authentifiés
     Route::resource('fields', FieldController::class)->only(['index', 'show']);
