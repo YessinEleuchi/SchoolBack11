@@ -27,12 +27,12 @@ Route::middleware('auth:api')->group(function () {
        Route::delete('admins/{id}', [AdminController::class, 'deleteAdmin'])->name('admin.delete');
        
        // Teacher Routes
+       Route::get('/teachers/total', [TeacherController::class, 'getTotalTeachers'])->name('teacher.total');
        Route::post('add-teacher', [TeacherController::class, 'addTeacher'])->name('teacher.add');
        Route::get('teachers', [TeacherController::class, 'getAllTeachers'])->name('teacher.all');
        Route::get('teachers/{id}', [TeacherController::class, 'getTeacherById'])->name('teacher.get');
        Route::put('teachers/{id}', [TeacherController::class, 'updateTeacher'])->name('teacher.update');
        Route::delete('teachers/{id}', [TeacherController::class, 'deleteTeacher'])->name('teacher.delete');
-       
        Route::post('/teachers/{teacherId}/assign-subjects', [TeacherController::class, 'assignSubject']);
 
        // Parent Routes
@@ -47,7 +47,11 @@ Route::middleware('auth:api')->group(function () {
         Route::get('students', [StudentController::class, 'getAll'])->name('student.all');
         Route::get('student/{id}', [StudentController::class, 'getById'])->name('student.get');
         Route::delete('student/{id}', [StudentController::class, 'delete'])->name('student.delete');
-        Route::put('student/{id}', [StudentController::class, 'update'])->name('student.update');       
+        Route::put('student/{id}', [StudentController::class, 'update'])->name('student.update');    
+        Route::get('/cycles/{cycleId}/students/total', [StudentController::class, 'getTotalStudentsByCycle']);
+        Route::get('/fields/{fieldId}/students/total', [StudentController::class, 'getTotalStudentsByField']);
+        Route::get('/specializations/{specializationId}/students/total', [StudentController::class, 'getTotalStudentsBySpecialization']);
+        Route::get('/students/total', [StudentController::class, 'getTotalStudents']);   
          // Ressources réservées à l'admin
         Route::resource('fields', FieldController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('cycles', CycleController::class)->except(['index', 'show', 'create', 'edit']);

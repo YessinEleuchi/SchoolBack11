@@ -6,6 +6,11 @@ use App\Enums\RoleEnum;
 use App\Enums\StatutStudentEnum;
 use App\Models\Student;
 use App\Models\User;
+use App\Models\Group;
+use App\Models\Specialization;
+use App\Models\Field;
+use App\Models\Level;
+use App\Models\Cycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -197,7 +202,8 @@ public function delete($id)
             ], 404);
         }
 
-        // Supprimer l'étudiant
+       
+        
         $student->delete();
 
         // Supprimer l'utilisateur associé
@@ -302,4 +308,362 @@ public function delete($id)
         ], 500);
     }
 }
+
+/**
+     * Récupérer les étudiants par groupe.
+     */
+    public function getStudentByGroup(Request $request, $groupId)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Vérifier que le groupe existe
+            $group = Group::find($groupId);
+            if (!$group) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Group not found.',
+                ], 404);
+            }
+
+            $perPage = $request->input('per_page', 10); // Par défaut 10 résultats par page
+
+            // Récupérer les étudiants du groupe avec pagination
+            $students = Student::where('group_id', $groupId)
+                ->with(['user', 'group', 'parent.user'])
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les étudiants par spécialisation.
+     */
+    public function getStudentBySpecialization(Request $request, $specializationId)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Vérifier que la spécialisation existe
+            $specialization = Specialization::find($specializationId);
+            if (!$specialization) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Specialization not found.',
+                ], 404);
+            }
+
+            $perPage = $request->input('per_page', 10); // Par défaut 10 résultats par page
+
+            // Récupérer les étudiants via les groupes associés aux niveaux de la spécialisation
+            $students = Student::whereHas('group.level.specialization', function ($query) use ($specializationId) {
+                $query->where('id', $specializationId);
+            })
+                ->with(['user', 'group', 'parent.user'])
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les étudiants par filière.
+     */
+    public function getStudentByField(Request $request, $fieldId)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Vérifier que la filière existe
+            $field = Field::find($fieldId);
+            if (!$field) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Field not found.',
+                ], 404);
+            }
+
+            $perPage = $request->input('per_page', 10); // Par défaut 10 résultats par page
+
+            // Récupérer les étudiants via les groupes associés aux niveaux des spécialisations de la filière
+            $students = Student::whereHas('group.level.specialization.field', function ($query) use ($fieldId) {
+                $query->where('id', $fieldId);
+            })
+                ->with(['user', 'group', 'parent.user'])
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les étudiants par niveau.
+     */
+    public function getStudentByLevel(Request $request, $levelId)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Vérifier que le niveau existe
+            $level = Level::find($levelId);
+            if (!$level) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Level not found.',
+                ], 404);
+            }
+
+            $perPage = $request->input('per_page', 10); // Par défaut 10 résultats par page
+
+            // Récupérer les étudiants via les groupes associés au niveau
+            $students = Student::whereHas('group.level', function ($query) use ($levelId) {
+                $query->where('id', $levelId);
+            })
+                ->with(['user', 'group', 'parent.user'])
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les étudiants par cycle.
+     */
+    public function getStudentByCycle(Request $request, $cycleId)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Vérifier que le cycle existe
+            $cycle = Cycle::find($cycleId);
+            if (!$cycle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cycle not found.',
+                ], 404);
+            }
+
+            $perPage = $request->input('per_page', 10); // Par défaut 10 résultats par page
+
+            // Récupérer les étudiants via les groupes associés aux niveaux des spécialisations des filières du cycle
+            $students = Student::whereHas('group.level.specialization.field.cycle', function ($query) use ($cycleId) {
+                $query->where('id', $cycleId);
+            })
+                ->with(['user', 'group', 'parent.user'])
+                ->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'students' => $students,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    /**
+ * Calculer le nombre total d'étudiants par cycle.
+ */
+public function getTotalStudentsByCycle(Request $request, $cycleId)
+{
+    try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Please authenticate.',
+            ], 401);
+        }
+
+        // Vérifier que le cycle existe
+        $cycle = Cycle::find($cycleId);
+        if (!$cycle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cycle not found.',
+            ], 404);
+        }
+
+        // Compter les étudiants via les groupes associés aux niveaux des spécialisations des filières du cycle
+        $totalStudents = Student::whereHas('group.level.specialization.field.cycle', function ($query) use ($cycleId) {
+            $query->where('id', $cycleId);
+        })->count();
+
+        return response()->json([
+            'success' => true,
+            'total_students' => $totalStudents,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/**
+ * Calculer le nombre total d'étudiants par filière.
+ */
+public function getTotalStudentsByField(Request $request, $fieldId)
+{
+    try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Please authenticate.',
+            ], 401);
+        }
+
+        // Vérifier que la filière existe
+        $field = Field::find($fieldId);
+        if (!$field) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Field not found.',
+            ], 404);
+        }
+
+        // Compter les étudiants via les groupes associés aux niveaux des spécialisations de la filière
+        $totalStudents = Student::whereHas('group.level.specialization.field', function ($query) use ($fieldId) {
+            $query->where('id', $fieldId);
+        })->count();
+
+        return response()->json([
+            'success' => true,
+            'total_students' => $totalStudents,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/**
+ * Calculer le nombre total d'étudiants par spécialisation.
+ */
+public function getTotalStudentsBySpecialization(Request $request, $specializationId)
+{
+    try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Please authenticate.',
+            ], 401);
+        }
+
+        // Vérifier que la spécialisation existe
+        $specialization = Specialization::find($specializationId);
+        if (!$specialization) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Specialization not found.',
+            ], 404);
+        }
+
+        // Compter les étudiants via les groupes associés aux niveaux de la spécialisation
+        $totalStudents = Student::whereHas('group.level.specialization', function ($query) use ($specializationId) {
+            $query->where('id', $specializationId);
+        })->count();
+
+        return response()->json([
+            'success' => true,
+            'total_students' => $totalStudents,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+/**
+ * Calculer le nombre total d'étudiants (tous cycles, toutes filières, toutes spécialisations).
+ */
+public function getTotalStudents(Request $request)
+{
+    try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Please authenticate.',
+            ], 401);
+        }
+
+        // Compter tous les étudiants
+        $totalStudents = Student::count();
+
+        return response()->json([
+            'success' => true,
+            'total_students' => $totalStudents,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
 }

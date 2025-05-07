@@ -210,4 +210,28 @@ class TeacherController extends Controller
             'course_file' => $courseFile,
         ], 201);
     }
+    public function getTotalTeachers(Request $request)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+    
+            // Count all teachers
+            $totalTeachers = Teacher::count();
+    
+            return response()->json([
+                'success' => true,
+                'total_teachers' => $totalTeachers, // Fixed key name
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
