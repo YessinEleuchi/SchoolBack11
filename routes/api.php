@@ -53,8 +53,10 @@ Route::middleware('auth:api')->group(function () {
         Route::put('student/{id}', [StudentController::class, 'update'])->name('student.update');    
         Route::get('/cycles/{cycleId}/students/total', [StudentController::class, 'getTotalStudentsByCycle']);
         Route::get('/fields/{fieldId}/students/total', [StudentController::class, 'getTotalStudentsByField']);
+        Route::get('/students/bycycleandfield', [StudentController::class, 'getStudentsByCycleAndField']);
         Route::get('/specializations/{specializationId}/students/total', [StudentController::class, 'getTotalStudentsBySpecialization']);
-        Route::get('/students/total', [StudentController::class, 'getTotalStudents']);   
+        Route::get('/students/total', [StudentController::class, 'getTotalStudents']);  
+         
          // Ressources réservées à l'admin
         Route::resource('fields', FieldController::class)->except(['index', 'show', 'create', 'edit']);
         Route::resource('cycles', CycleController::class)->except(['index', 'show', 'create', 'edit']);

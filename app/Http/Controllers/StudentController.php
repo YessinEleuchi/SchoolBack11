@@ -14,6 +14,8 @@ use App\Models\Cycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB; 
+
 
 class StudentController extends Controller
 {
@@ -210,6 +212,8 @@ public function getAllPaginated(Request $request)
         }
     }
 
+
+
     /**
      * Supprimer un étudiant.
      */
@@ -361,6 +365,69 @@ public function delete($id)
         ], 500);
     }
 }
+  /**
+     * Calculer le nombre d'étudiants par cycle, groupé par filière.
+     */
+    public function getStudentsByCycleAndField(Request $request)
+    {
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
+
+            // Récupérer les données des étudiants par cycle et filière
+            $data = Student::select(
+                'cycles.id as cycle_id',
+                'cycles.name as cycle_name',
+                'fields.name as field_name',
+                DB::raw('count(students.id) as student_count')
+            )
+                ->join('groups', 'students.group_id', '=', 'groups.id')
+                ->join('levels', 'groups.level_id', '=', 'levels.id')
+                ->join('specializations', 'levels.specialization_id', '=', 'specializations.id')
+                ->join('fields', 'specializations.field_id', '=', 'fields.id')
+                ->join('cycles', 'fields.cycle_id', '=', 'cycles.id')
+                ->groupBy('cycles.id', 'cycles.name', 'fields.name')
+                ->orderBy('cycles.id')
+                ->get();
+
+            // Organiser les données pour le frontend
+            $cycles = Cycle::all()->pluck('name', 'id')->toArray();
+            $result = [];
+
+            foreach ($cycles as $cycleId => $cycleName) {
+                $result[$cycleId] = [
+                    'cycle_name' => $cycleName,
+                    'fields' => []
+                ];
+            }
+
+            foreach ($data as $row) {
+                $result[$row->cycle_id]['fields'][] = [
+                    'field_name' => $row->field_name,
+                    'student_count' => $row->student_count
+                ];
+            }
+
+            // Convertir en tableau indexé et filtrer les cycles vides
+            $result = array_values(array_filter($result, function ($cycle) {
+                return !empty($cycle['fields']);
+            }));
+
+            return response()->json([
+                'success' => true,
+                'data' => $result
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
 /**
      * Récupérer les étudiants par groupe.
