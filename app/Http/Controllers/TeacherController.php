@@ -66,10 +66,20 @@ class TeacherController extends Controller
         }
     }
 
-    public function getAllTeachers()
+    public function getAllTeachers(Request $request)
     {
-        $teachers = Teacher::with('user')->get();
-        return response()->json(['data' => $teachers], 200);
+        $perPage = 6; // Set pagination to 6 teachers per page
+        $teachers = Teacher::with('user')->paginate($perPage);
+
+        return response()->json([
+            'teachers' => $teachers->items(),
+            'pagination' => [
+                'current_page' => $teachers->currentPage(),
+                'last_page' => $teachers->lastPage(),
+                'per_page' => $teachers->perPage(),
+                'total' => $teachers->total(),
+            ]
+        ], 200);
     }
 
     public function getTeacherById($id)

@@ -69,7 +69,40 @@ class ParentsController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getAllParents()
+    public function getAllParents(Request $request)
+    {
+        // Vérifiez que l'utilisateur est authentifié et est un admin
+        if (Auth::user()->role !== RoleEnum::Admin->value) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Only admins can view parents.',
+            ], 403);
+        }
+
+        try {
+            // Retrieve parents with their associated user data, paginated
+            $perPage = 6; // Set pagination to 6 parents per page
+            $parents = Parents::with('user')->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Parents retrieved successfully',
+                'parents' => $parents->items(),
+                'pagination' => [
+                    'current_page' => $parents->currentPage(),
+                    'last_page' => $parents->lastPage(),
+                    'per_page' => $parents->perPage(),
+                    'total' => $parents->total(),
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while retrieving parents.',
+            ], 500);
+        }
+    }
+    public function getAllParentsnp()
     {
         // Vérifiez que l'utilisateur est authentifié et est un admin
         if (Auth::user()->role !== RoleEnum::Admin->value) {

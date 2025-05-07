@@ -38,6 +38,7 @@ Route::middleware('auth:api')->group(function () {
        // Parent Routes
        Route::post('add-parents', [ParentsController::class, 'addParents'])->name('parent.add');
         Route::get('parents', [ParentsController::class, 'getAllParents'])->name('parent.all');
+        Route::get('parentsnp', [ParentsController::class, 'getAllParentsnp'])->name('parent.all');
         Route::get('parents/{id}', [ParentsController::class, 'getParentById'])->name('parent.get');
         Route::put('parents/{id}', [ParentsController::class, 'updateParent'])->name('parent.update');
         Route::delete('parents/{id}', [ParentsController::class, 'deleteParent'])->name('parent.delete');
@@ -45,6 +46,8 @@ Route::middleware('auth:api')->group(function () {
         // StudentController Routes
         Route::post('add-student', [StudentController::class, 'addStudent'])->name('student.add');
         Route::get('students', [StudentController::class, 'getAll'])->name('student.all');
+        Route::get('studentsPaginated', [StudentController::class, 'getAllPaginated'])->name('student.allPaginated');
+
         Route::get('student/{id}', [StudentController::class, 'getById'])->name('student.get');
         Route::delete('student/{id}', [StudentController::class, 'delete'])->name('student.delete');
         Route::put('student/{id}', [StudentController::class, 'update'])->name('student.update');    

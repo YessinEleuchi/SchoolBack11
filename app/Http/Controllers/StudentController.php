@@ -122,6 +122,43 @@ class StudentController extends Controller
     }
 
     /**
+ * Récupérer tous les étudiants avec pagination.
+ */
+public function getAllPaginated(Request $request)
+{
+    try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Please authenticate.',
+            ], 401);
+        }
+
+        // Définir le nombre d'éléments par page (par défaut 10)
+        $perPage = $request->input('per_page', 6);
+
+        // Charger les relations 'user', 'group', et 'parent.user' avec pagination
+        $students = Student::with(['user', 'group', 'parent.user'])->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'students' => $students->items(),
+            'pagination' => [
+                'current_page' => $students->currentPage(),
+                'last_page' => $students->lastPage(),
+                'per_page' => $students->perPage(),
+                'total' => $students->total(),
+            ],
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+    /**
      * Récupérer un étudiant par ID.
      */
     public function getById($id)
