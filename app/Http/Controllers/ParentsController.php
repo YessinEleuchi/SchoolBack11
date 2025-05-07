@@ -80,9 +80,24 @@ class ParentsController extends Controller
         }
 
         try {
-            // Retrieve parents with their associated user data, paginated
-            $perPage = 6; // Set pagination to 6 parents per page
-            $parents = Parents::with('user')->paginate($perPage);
+            // Récupérer les paramètres de pagination et de recherche
+            $perPage = $request->query('per_page', 6); // Default to 6 parents per page
+            $search = $request->query('search', '');
+
+            // Construire la requête pour récupérer les parents
+            $query = Parents::with('user');
+
+            // Appliquer le filtre de recherche si un terme est fourni
+            if (!empty($search)) {
+                $query->whereHas('user', function ($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', '%' . $search . '%')
+                             ->orWhere('email', 'like', '%' . $search . '%')
+                             ->orWhere('phone', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Paginer les résultats
+            $parents = $query->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -98,7 +113,7 @@ class ParentsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while retrieving parents.',
+                'message' => 'An error occurred while retrieving parents: ' . $e->getMessage(),
             ], 500);
         }
     }

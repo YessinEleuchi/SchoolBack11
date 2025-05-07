@@ -68,18 +68,48 @@ class TeacherController extends Controller
 
     public function getAllTeachers(Request $request)
     {
-        $perPage = 6; // Set pagination to 6 teachers per page
-        $teachers = Teacher::with('user')->paginate($perPage);
+        try {
+            if (!Auth::check()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please authenticate.',
+                ], 401);
+            }
 
-        return response()->json([
-            'teachers' => $teachers->items(),
-            'pagination' => [
-                'current_page' => $teachers->currentPage(),
-                'last_page' => $teachers->lastPage(),
-                'per_page' => $teachers->perPage(),
-                'total' => $teachers->total(),
-            ]
-        ], 200);
+            // Définir le nombre d'éléments par page (par défaut 6)
+            $perPage = $request->input('per_page', 6);
+            $search = $request->input('search', '');
+
+            // Construire la requête pour récupérer les enseignants
+            $query = Teacher::with('user');
+
+            // Appliquer le filtre de recherche si un terme est fourni
+            if (!empty($search)) {
+                $query->whereHas('user', function ($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', '%' . $search . '%')
+                             ->orWhere('email', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Paginer les résultats
+            $teachers = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'teachers' => $teachers->items(),
+                'pagination' => [
+                    'current_page' => $teachers->currentPage(),
+                    'last_page' => $teachers->lastPage(),
+                    'per_page' => $teachers->perPage(),
+                    'total' => $teachers->total(),
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function getTeacherById($id)
