@@ -282,89 +282,88 @@ public function delete($id)
      * Mettre à jour un étudiant.
      */
     public function update(Request $request, $id)
-{
-    try {
-        // Vérifier que l'utilisateur est authentifié et administrateur
-        if (Auth::user()->role !== RoleEnum::Admin->value) {
+    {
+        try {
+            // Use getById to retrieve the student
+            $result = $this->getById($id);
+    
+            // Check if getById returned a response (error case)
+            if ($result instanceof \Illuminate\Http\JsonResponse) {
+                return $result; // Return the error response directly
+            }
+    
+            // Get the student model
+            $student = $result;
+            $user = $student->user;
+    
+            // Vérifier que l'utilisateur est authentifié et administrateur
+            if (Auth::user()->role !== RoleEnum::Admin->value) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Only admins can update students.',
+                ], 403);
+            }
+    
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Associated user not found.',
+                ], 404);
+            }
+    
+            // Validation des données, excluant l'utilisateur actuel pour la vérification d'unicité de l'email
+            $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+                'password' => 'sometimes|string|min:6',
+                'admission_no' => 'sometimes|string|unique:students,admission_no,' . $id,
+                'gender' => 'sometimes|string|in:male,female',
+                'phone' => 'sometimes|string|max:20',
+                'address' => 'sometimes|string|max:255',
+                'dateofbirth' => 'sometimes|date',
+                'status' => 'sometimes|string|in:' . implode(',', StatutStudentEnum::values()),
+                'group_id' => 'sometimes|exists:groups,id',
+                'parent_id' => 'nullable|exists:parents,id',
+            ]);
+    
+            // Mettre à jour les informations de l'utilisateur
+            $userData = [
+                'name' => $request->input('name', $user->name),
+                'email' => $request->input('email', $user->email),
+                'gender' => $request->input('gender', $user->gender),
+                'phone' => $request->input('phone', $user->phone),
+                'address' => $request->input('address', $user->address),
+                'date_of_birth' => $request->input('dateofbirth', $user->date_of_birth),
+            ];
+    
+            if ($request->has('password')) {
+                $userData['password'] = Hash::make($request->password);
+            }
+    
+            $user->update($userData);
+    
+            // Mettre à jour les informations de l'étudiant
+            $studentData = [
+                'admission_no' => $request->input('admission_no', $student->admission_no),
+                'status' => $request->input('status', $student->status),
+                'group_id' => $request->input('group_id', $student->group_id),
+                'parent_id' => $request->input('parent_id', $student->parent_id),
+            ];
+    
+            $student->update($studentData);
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Student updated successfully.',
+                'student' => $student->load(['user', 'group', 'parent']),
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Only admins can update students.',
-            ], 403);
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Trouver l'étudiant
-        $student = Student::find($id);
-
-        if (!$student) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Student not found.',
-            ], 404);
-        }
-
-        // Trouver l'utilisateur associé
-        $user = User::find($student->user_id);
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Associated user not found.',
-            ], 404);
-        }
-
-        // Validation des données, excluant l'utilisateur actuel pour la vérification d'unicité de l'email
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'sometimes|string|min:6',
-            'admission_no' => 'sometimes|string|unique:students,admission_no,' . $id,
-            'gender' => 'sometimes|string|in:male,female',
-            'phone' => 'sometimes|string|max:20',
-            'address' => 'sometimes|string|max:255',
-            'date_of_birth' => 'sometimes|date',
-            'status' => 'sometimes|string|in:' . implode(',', StatutStudentEnum::values()),
-            'group_id' => 'sometimes|exists:groups,id',
-            'parent_id' => 'nullable|exists:parents,id',
-        ]);
-
-        // Mettre à jour les informations de l'utilisateur
-        $userData = [
-            'name' => $request->input('name', $user->name),
-            'email' => $request->input('email', $user->email),
-            'gender' => $request->input('gender', $user->gender),
-            'phone' => $request->input('phone', $user->phone),
-            'address' => $request->input('address', $user->address),
-            'date_of_birth' => $request->input('date_of_birth', $user->date_of_birth),
-        ];
-
-        if ($request->has('password')) {
-            $userData['password'] = Hash::make($request->password);
-        }
-
-        $user->update($userData);
-
-        // Mettre à jour les informations de l'étudiant
-        $studentData = [
-            'admission_no' => $request->input('admission_no', $student->admission_no),
-            'status' => $request->input('status', $student->status),
-            'group_id' => $request->input('group_id', $student->group_id),
-            'parent_id' => $request->input('parent_id', $student->parent_id),
-        ];
-
-        $student->update($studentData);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Student updated successfully.',
-            'student' => $student->load(['user', 'group', 'parent']),
-        ], 200);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage(),
-        ], 500);
     }
-}
   /**
      * Calculer le nombre d'étudiants par cycle, groupé par filière.
      */
